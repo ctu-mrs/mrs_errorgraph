@@ -2,6 +2,7 @@
 
 #include <ros/ros.h>
 
+#include <mrs_errorgraph/node_id.h>
 #include <mrs_errorgraph/ErrorgraphElement.h>
 
 namespace mrs_errorgraph
@@ -76,7 +77,27 @@ namespace mrs_errorgraph
         errors_.push_back({std::nullopt, std::move(msg)});
       }
 
-      void addWaitingForNodeError(const node_id& node_id)
+      void addWaitingForTopicError(const std::string& topic_name)
+      {
+        const auto now = ros::Time::now();
+        std::scoped_lock lck(errors_mtx_);
+        for (auto& error_wrapper : errors_)
+        {
+          if (error_wrapper.msg.type == mrs_errorgraph::ErrorgraphError::TYPE_WAITING_FOR_TOPIC
+           && error_wrapper.msg.waited_for_topic == topic_name)
+          {
+            error_wrapper.msg.stamp = now;
+            return;
+          }
+        }
+        mrs_errorgraph::ErrorgraphError msg;
+        msg.type = mrs_errorgraph::ErrorgraphError::TYPE_WAITING_FOR_TOPIC;
+        msg.stamp = now;
+        msg.waited_for_topic = topic_name;
+        errors_.push_back({std::nullopt, std::move(msg)});
+      }
+
+      void addWaitingForNodeError(const node_id_t& node_id)
       {
         const auto now = ros::Time::now();
         std::scoped_lock lck(errors_mtx_);
