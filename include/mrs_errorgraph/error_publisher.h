@@ -76,15 +76,15 @@ namespace mrs_errorgraph
         errors_.push_back({std::nullopt, std::move(msg)});
       }
 
-      void addWaitingForNodeError(const std::string& node, const std::string& component)
+      void addWaitingForNodeError(const node_id& node_id)
       {
         const auto now = ros::Time::now();
         std::scoped_lock lck(errors_mtx_);
         for (auto& error_wrapper : errors_)
         {
           if (error_wrapper.msg.type == mrs_errorgraph::ErrorgraphError::TYPE_WAITING_FOR_NODE
-           && error_wrapper.msg.waited_for_node.node == node
-           && error_wrapper.msg.waited_for_node.component == component)
+           && error_wrapper.msg.waited_for_node.node == node_id.node
+           && error_wrapper.msg.waited_for_node.component == node_id.component)
           {
             error_wrapper.msg.stamp = now;
             return;
@@ -93,8 +93,8 @@ namespace mrs_errorgraph
         mrs_errorgraph::ErrorgraphError msg;
         msg.type = mrs_errorgraph::ErrorgraphError::TYPE_WAITING_FOR_NODE;
         msg.stamp = now;
-        msg.waited_for_node.node = node;
-        msg.waited_for_node.component = component;
+        msg.waited_for_node.node = node_id.node;
+        msg.waited_for_node.component = node_id.component;
         errors_.push_back({std::nullopt, std::move(msg)});
       }
 

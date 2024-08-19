@@ -8,33 +8,14 @@
 
 #include <ros/time.h>
 
-#include <mrs_errorgraph/ErrorgraphNodeID.h>
+#include <mrs_errorgraph/node_id.h>
+
 #include <mrs_errorgraph/ErrorgraphElement.h>
 
 namespace mrs_errorgraph
 {
-  using errorgraph_node_id_msg_t = mrs_errorgraph::ErrorgraphNodeID;
   using errorgraph_error_msg_t = mrs_errorgraph::ErrorgraphError;
   using errorgraph_element_msg_t = mrs_errorgraph::ErrorgraphElement;
-
-  struct node_id_t
-  {
-    std::string node;
-    std::string component;
-
-    inline bool operator==(const node_id_t& other) const
-    {
-      return node == other.node && component == other.component;
-    }
-
-    static inline node_id_t from_msg(const errorgraph_node_id_msg_t& msg)
-    {
-      node_id_t ret;
-      ret.node = msg.node;
-      ret.component = msg.component;
-      return ret;
-    }
-  };
 
   inline std::ostream& operator<<(std::ostream& os, const node_id_t& node_id)
   {

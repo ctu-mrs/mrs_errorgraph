@@ -11,12 +11,6 @@ set(CATKIN_DEPENDENCIES
   roscpp
   message_generation
   nodelet
-  mrs_msgs
-  mrs_lib
-  )
-
-set(LIBRARIES
-  MRSErrorgraphViewer
   )
 
 find_package(catkin REQUIRED COMPONENTS
@@ -26,8 +20,6 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(OpenCV REQUIRED)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
-
-find_package(Graphviz REQUIRED)
 
 # messages
 add_message_files(DIRECTORY msg FILES
@@ -39,9 +31,10 @@ add_message_files(DIRECTORY msg FILES
 ## Generate added messages and services with any dependencies listed here
 generate_messages(DEPENDENCIES
   std_msgs
-  geometry_msgs
-  sensor_msgs
-  mrs_msgs
+  )
+
+set(LIBRARIES
+  MrsErrorgraph
   )
 
 catkin_package(
@@ -51,32 +44,21 @@ catkin_package(
   )
 
 include_directories(
-  ${catkin_INCLUDE_DIRS}
   include
-  graaf/include
+  ${catkin_INCLUDE_DIRS}
   )
 
 ## | ------------ MRSErrorgraphViewer ------------ |
 
 ## Declare a C++ library
-add_library(MRSErrorgraphViewer
-  src/errorgraph_viewer.cpp
+add_library(MrsErrorgraph
   src/errorgraph.cpp
   )
 
-add_dependencies(MRSErrorgraphViewer
-  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-  )
-
 ## Specify libraries to link a library or executable target against
-target_link_libraries(MRSErrorgraphViewer
+target_link_libraries(MrsErrorgraph
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
-  ${GRAPHVIZ_CDT_LIBRARY}
-  ${GRAPHVIZ_GVC_LIBRARY}
-  ${GRAPHVIZ_CGRAPH_LIBRARY}
-  ${GRAPHVIZ_PATHPLAN_LIBRARY}
   )
 
 ## --------------------------------------------------------------
@@ -89,14 +71,6 @@ install(TARGETS ${LIBRARIES}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
   )
 
-install(DIRECTORY launch config
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-  )
-
 install(DIRECTORY include/mrs_errorgraph/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  )
-
-install(FILES nodelets.xml
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   )
