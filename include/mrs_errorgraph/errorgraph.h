@@ -22,55 +22,69 @@ namespace mrs_errorgraph
     return os << node_id.node << "." << node_id.component;
   }
 
-  struct errorgraph_error_t
-  {
-    std::string type;
-    std::optional<std::string> waited_for_topic;
-    std::optional<node_id_t> waited_for_node;
-
-    inline bool is_waiting_for() const
-    {
-      return is_waiting_for_topic() || is_waiting_for_node();
-    }
-
-    inline bool is_waiting_for_topic() const
-    {
-      return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_TOPIC;
-    }
-
-    inline bool is_waiting_for_node() const
-    {
-      return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_NODE;
-    }
-
-    inline bool is_waiting_for(const std::string& topic) const
-    {
-      return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_TOPIC && waited_for_topic.has_value() && waited_for_topic.value() == topic;
-    }
-
-    inline bool is_waiting_for(const node_id_t& node_id) const
-    {
-      return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_NODE && waited_for_node.has_value() && waited_for_node.value() == node_id;
-    }
-
-    inline bool is_no_error() const
-    {
-      return type == errorgraph_error_msg_t::TYPE_NO_ERROR;
-    }
-
-    errorgraph_error_t(const errorgraph_error_msg_t& msg)
-      : type(msg.type)
-    {
-      if (msg.type == errorgraph_error_msg_t::TYPE_WAITING_FOR_NODE)
-        waited_for_node = node_id_t::from_msg(msg.waited_for_node);
-      else if (msg.type == errorgraph_error_msg_t::TYPE_WAITING_FOR_TOPIC)
-        waited_for_topic = msg.waited_for_topic;
-    }
-  };
-
   class Errorgraph
   {
     public:
+
+      struct error_t
+      {
+        ros::Time stamp;
+        std::string type;
+        std::optional<std::string> waited_for_topic;
+        std::optional<node_id_t> waited_for_node;
+
+        inline bool is_waiting_for() const
+        {
+          return is_waiting_for_topic() || is_waiting_for_node();
+        }
+
+        inline bool is_waiting_for_topic() const
+        {
+          return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_TOPIC;
+        }
+
+        inline bool is_waiting_for_node() const
+        {
+          return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_NODE;
+        }
+
+        inline bool is_waiting_for(const std::string& topic) const
+        {
+          return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_TOPIC && waited_for_topic.has_value() && waited_for_topic.value() == topic;
+        }
+
+        inline bool is_waiting_for(const node_id_t& node_id) const
+        {
+          return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_NODE && waited_for_node.has_value() && waited_for_node.value() == node_id;
+        }
+
+        inline bool is_no_error() const
+        {
+          return type == errorgraph_error_msg_t::TYPE_NO_ERROR;
+        }
+
+        error_t(const errorgraph_error_msg_t& msg)
+          : type(msg.type)
+        {
+          if (msg.type == errorgraph_error_msg_t::TYPE_WAITING_FOR_NODE)
+            waited_for_node = node_id_t::from_msg(msg.waited_for_node);
+          else if (msg.type == errorgraph_error_msg_t::TYPE_WAITING_FOR_TOPIC)
+            waited_for_topic = msg.waited_for_topic;
+          stamp = msg.stamp;
+        }
+
+        errorgraph_error_msg_t to_msg() const
+        {
+          errorgraph_error_msg_t ret;
+          ret.stamp = stamp;
+          ret.type = type;
+          if (waited_for_topic.has_value())
+            ret.waited_for_topic = waited_for_topic.value();
+          if (waited_for_node.has_value())
+            ret.waited_for_node = waited_for_node.value().to_msg();
+          return ret;
+        }
+      };
 
       struct element_t
       {
@@ -90,7 +104,7 @@ namespace mrs_errorgraph
         node_id_t source_node;
 
         // a list of errors related to this element (if it is a node)
-        std::vector<errorgraph_error_t> errors;
+        std::vector<error_t> errors;
         // last time this was updated from a message
         ros::Time stamp = ros::Time(0);
         ros::Duration not_reporting_delay = ros::Duration(3.0);
@@ -148,7 +162,7 @@ namespace mrs_errorgraph
 
         inline bool is_no_error() const
         {
-          return !errors.empty() && std::all_of(std::begin(errors), std::end(errors), [](const auto& error)
+          return !is_not_reporting() && std::all_of(std::begin(errors), std::end(errors), [](const auto& error)
               {
                 return error.is_no_error();
               });
@@ -157,6 +171,16 @@ namespace mrs_errorgraph
         inline bool is_not_reporting() const
         {
           return type != type_t::topic && ros::Time::now() - stamp > not_reporting_delay;
+        }
+
+        errorgraph_element_msg_t to_msg() const
+        {
+          errorgraph_element_msg_t ret;
+          ret.stamp = stamp;
+          ret.source_node = source_node.to_msg();
+          for (const auto& error : errors)
+            ret.errors.push_back(error.to_msg());
+          return ret;
         }
       };
 
@@ -188,9 +212,11 @@ namespace mrs_errorgraph
 
       std::vector<const element_t* > find_dependency_roots(const node_id_t& node_id, bool* loop_detected_out = nullptr);
 
-      std::vector<const element_t*> find_all_roots();
+      std::vector<const element_t*> find_error_roots();
 
-      std::vector<const element_t*> find_all_leaves();
+      std::vector<const element_t*> find_roots();
+
+      std::vector<const element_t*> find_leaves();
 
       const element_t* find_element(const std::string& topic_name);
 

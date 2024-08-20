@@ -1,0 +1,35 @@
+<launch>
+
+  <!-- defines name of the namespace -->
+  <arg name="UAV_NAME" default="$(optenv UAV_NAME uav1)" />
+
+  <arg name="custom_config" default="" />
+
+  <!-- will it run using GNU debugger? -->
+  <arg name="debug" default="false" />
+  <arg unless="$(arg debug)" name="launch_prefix_debug" value=""/>
+  <arg     if="$(arg debug)" name="launch_prefix_debug" value="debug_roslaunch"/>
+
+  <group ns="$(arg UAV_NAME)">
+
+    <!-- IROCBridge nodelet -->
+    <node pkg="mrs_errorgraph" type="root_error_publisher" name="root_error_publisher" launch-prefix="$(arg launch_prefix_debug)" output="screen">
+
+      <!-- <param name="num_worker_threads" value="4" /> -->
+      <param name="config" value="$(find mrs_errorgraph)/config/root_error_publisher.yaml" />
+
+      <param if="$(eval arg('custom_config') == '')" name="custom_config" value="" />
+      <param if="$(eval not arg('custom_config') == '' and arg('custom_config')[0] == '/')" name="custom_config" value="$(arg custom_config)" />
+      <param if="$(eval not arg('custom_config') == '' and not arg('custom_config')[0] == '/')" name="custom_config" value="$(env PWD)/$(arg custom_config)" />
+
+      <!-- Publishers -->
+      <remap from="~out/root_errors" to="root_errors" />
+
+      <!-- Subscribers -->
+      <remap from="~in/errors" to="errors" />
+
+    </node>
+
+  </group>
+
+</launch>

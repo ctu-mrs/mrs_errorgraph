@@ -16,7 +16,7 @@
 
   <depend>cmake_modules</depend>
   <depend>roscpp</depend>
-  <depend>nodelet</depend>
+  <depend>mrs_lib</depend>
   <depend>message_generation</depend>
 
 </package>

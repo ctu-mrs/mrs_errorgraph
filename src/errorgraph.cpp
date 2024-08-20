@@ -76,7 +76,18 @@ namespace mrs_errorgraph
     graph_up_to_date_ = true;
   }
 
-  std::vector<const Errorgraph::element_t*> Errorgraph::find_all_roots()
+  std::vector<const Errorgraph::element_t*> Errorgraph::find_error_roots()
+  {
+    std::vector<const element_t*> roots;
+    for (const auto& el_ptr : elements_)
+    {
+      if (!el_ptr->is_waiting_for() && !el_ptr->is_no_error())
+        roots.push_back(el_ptr.get());
+    }
+    return roots;
+  }
+
+  std::vector<const Errorgraph::element_t*> Errorgraph::find_roots()
   {
     std::vector<const element_t*> roots;
     for (const auto& el_ptr : elements_)
@@ -87,7 +98,7 @@ namespace mrs_errorgraph
     return roots;
   }
 
-  std::vector<const Errorgraph::element_t*> Errorgraph::find_all_leaves()
+  std::vector<const Errorgraph::element_t*> Errorgraph::find_leaves()
   {
     std::vector<const element_t*> leaves;
     for (const auto& el_ptr : elements_)
@@ -277,9 +288,13 @@ namespace mrs_errorgraph
         os << " shape=box";
       // otherwise, it's just a normal node, so leave the default shape
 
-      // if the node has not reported yet, mark it with a red color
-      if (element->is_not_reporting())
+      // if the node has errors or has not reported yet, mark it with a red color
+      if (!element->is_no_error())
         os << " color=red";
+
+      // if the node is not reporting, draw it dashed
+      if (element->is_not_reporting())
+        os << " style=dashed";
 
       os << "];\n";
 

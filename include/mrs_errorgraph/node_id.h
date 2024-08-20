@@ -22,5 +22,13 @@ namespace mrs_errorgraph
       ret.component = msg.component;
       return ret;
     }
+
+    inline errorgraph_node_id_msg_t to_msg() const
+    {
+      errorgraph_node_id_msg_t ret;
+      ret.node = node;
+      ret.component = component;
+      return ret;
+    }
   };
 }

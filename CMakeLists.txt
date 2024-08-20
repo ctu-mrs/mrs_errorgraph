@@ -9,23 +9,20 @@ add_definitions(-save-temps)
 set(CATKIN_DEPENDENCIES
   cmake_modules
   roscpp
+  mrs_lib
   message_generation
-  nodelet
   )
 
 find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_DEPENDENCIES}
   )
 
-find_package(OpenCV REQUIRED)
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
-
 # messages
 add_message_files(DIRECTORY msg FILES
   ErrorgraphNodeID.msg
   ErrorgraphError.msg
   ErrorgraphElement.msg
+  ErrorgraphElementArray.msg
   )
 
 ## Generate added messages and services with any dependencies listed here
@@ -48,7 +45,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   )
 
-## | ------------ MRSErrorgraphViewer ------------ |
+## | -------------------- libMrsErrorgraph -------------------- |
 
 ## Declare a C++ library
 add_library(MrsErrorgraph
@@ -58,7 +55,19 @@ add_library(MrsErrorgraph
 ## Specify libraries to link a library or executable target against
 target_link_libraries(MrsErrorgraph
   ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES}
+  )
+
+## | ------------------- RootErrorPublisher ------------------- |
+
+## Declare a C++ executable
+add_executable(root_error_publisher
+  src/root_error_publisher.cpp
+  )
+
+## Specify libraries to link a library or executable target against
+target_link_libraries(root_error_publisher
+  ${catkin_LIBRARIES}
+  MrsErrorgraph
   )
 
 ## --------------------------------------------------------------
