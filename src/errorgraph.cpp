@@ -8,6 +8,9 @@ namespace mrs_errorgraph
     // first, make sure that the elements are connected as the graph
     prepare_graph();
     const auto elem = find_element_mutable(node_id);
+    if (elem == nullptr)
+      return {};
+
     return DFS(elem, loop_detected_out);
   }
 
