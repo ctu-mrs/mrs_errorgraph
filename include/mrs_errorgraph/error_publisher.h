@@ -8,9 +8,18 @@
 namespace mrs_errorgraph
 {
 
+  /**
+  * \brief A helper class for aggregating and publishing errors to the Errorgraph.
+  * Report errors preventing your node from functioning properly using the respective methods.
+  * These are aggregated and periodically published by this class. After publishing, the list
+  * of errors is cleared, so take care when setting the `publish_period`.
+  */
   class ErrorPublisher
   {
     public:
+      /*!
+        * \brief Type of the ID used to avoid duplication of errors when using addGeneralError.
+        */
       using error_id_t = uint16_t;
 
     private:
@@ -22,102 +31,78 @@ namespace mrs_errorgraph
 
     public:
 
-      ErrorPublisher(const ros::NodeHandle& nh, const std::string& node_name, const std::string& component_name, const ros::Rate& publish_period = ros::Rate(1.0))
-        : nh_(nh), node_name_(node_name), component_name_(component_name)
-      {
-        pub_ = nh_.advertise<mrs_errorgraph::ErrorgraphElement>("errors", 1, true);
-        tim_publish_ = nh_.createTimer(publish_period, &ErrorPublisher::timPublish, this);
-      };
+      /*!
+        * \brief The main constructor.
+        *
+        * \param nh               The ROS NodeHandle used for publisher advertisement and timer registration.
+        * \param node_name        Name of the ROS node used for filling out the node_id in the published error messages.
+        * \param component_name   Name of the component used for filling out the node_id in the published error messages.
+        * \param publish_period   How often will the aggregated errors be published.
+        */
+      ErrorPublisher(const ros::NodeHandle& nh, const std::string& node_name, const std::string& component_name, const ros::Rate& publish_period = ros::Rate(1.0));
 
-      void flush()
-      {
-        publishErrors();
-      }
+      /*!
+        * \brief Publishes all aggregated errors and calls ros::shutdown().
+        *
+        * \note To make sure that the published messages are propagated through ROS to any subscribers,
+        * the method waits 1s after publishin before calling ros::shutdown().
+        */
+      void flushAndShutdown();
 
-      void flushAndShutdown()
-      {
-        publishErrors();
-        tim_publish_ = {};
-        ros::Duration(1.0).sleep();
-        ros::shutdown();
-      }
+      /*!
+        * \brief Add a custom error to the list of aggregated errors to be published in the next period.
+        * This method uses the `id` to distinguish between different error types and avoid error duplication.
+        * If an element with the same `id` is found in the list of currently aggregated errors, it will be replaced
+        * by the new one provided. Otherwise, a new error will be added to the list.
+        *
+        * \param id               The unique identification number of this error type for this ErrorPublisher.
+        * \param description      A short and succinct description of the error.
+        */
+      void addGeneralError(const error_id_t id, const std::string& description);
 
+      /*!
+        * \brief A convenience overload for custom enumeration types.
+        * This overload just casts the `id` parameter to the `error_id_t` type so that you can call it with
+        * your own enumeration type more easily without casting it yourself.
+        *
+        * \param id               The unique identification number of this error type for this ErrorPublisher.
+        * \param description      A short and succinct description of the error.
+        */
       template <typename enum_T>
       void addGeneralError(const enum_T id, const std::string& description)
       {
         addGeneralError(static_cast<error_id_t>(id), description);
       }
 
-      void addGeneralError(const error_id_t id, const std::string& description)
-      {
-        const auto now = ros::Time::now();
-        std::scoped_lock lck(errors_mtx_);
-        for (auto& error_wrapper : errors_)
-        {
-          if (error_wrapper.id.has_value() && error_wrapper.id.value() == id)
-          {
-            error_wrapper.msg.type = description;
-            error_wrapper.msg.stamp = now;
-            return;
-          }
-        }
-        mrs_errorgraph::ErrorgraphError msg;
-        msg.type = description;
-        msg.stamp = now;
-        errors_.push_back({id, std::move(msg)});
-      }
+      /*!
+        * \brief Add an error that only appears once.
+        * This overload assumes that the error is unique, so it cannot be duplicate and doesn't need an identifier.
+        * Useful for errors during initialization that lead to termination of the node anyways.
+        *
+        * \param description      A short and succinct description of the error.
+        */
+      void addOneshotError(const std::string& description);
 
-      void addOneshotError(const std::string& description)
-      {
-        const auto now = ros::Time::now();
-        std::scoped_lock lck(errors_mtx_);
-        mrs_errorgraph::ErrorgraphError msg;
-        msg.type = description;
-        msg.stamp = now;
-        errors_.push_back({std::nullopt, std::move(msg)});
-      }
+      /*!
+        * \brief Add a special error type `waiting_for_node`.
+        * Use this whenever your node is blocked because it waits for some kind of input from another node, such as
+        * a transformation, messages, a service, etc. This helps construct the Errorgraph and decide which errors
+        * are the roots problems blocking the system. If you don't know the component of the node for the node_id,
+        * use `main`.
+        *
+        * \param node_id          Identifier of the node and component that is being waited for. If the component is unknown, use `main`.
+        */
+      void addWaitingForNodeError(const node_id_t& node_id);
 
-      void addWaitingForTopicError(const std::string& topic_name)
-      {
-        const auto now = ros::Time::now();
-        std::scoped_lock lck(errors_mtx_);
-        for (auto& error_wrapper : errors_)
-        {
-          if (error_wrapper.msg.type == mrs_errorgraph::ErrorgraphError::TYPE_WAITING_FOR_TOPIC
-           && error_wrapper.msg.waited_for_topic == topic_name)
-          {
-            error_wrapper.msg.stamp = now;
-            return;
-          }
-        }
-        mrs_errorgraph::ErrorgraphError msg;
-        msg.type = mrs_errorgraph::ErrorgraphError::TYPE_WAITING_FOR_TOPIC;
-        msg.stamp = now;
-        msg.waited_for_topic = topic_name;
-        errors_.push_back({std::nullopt, std::move(msg)});
-      }
-
-      void addWaitingForNodeError(const node_id_t& node_id)
-      {
-        const auto now = ros::Time::now();
-        std::scoped_lock lck(errors_mtx_);
-        for (auto& error_wrapper : errors_)
-        {
-          if (error_wrapper.msg.type == mrs_errorgraph::ErrorgraphError::TYPE_WAITING_FOR_NODE
-           && error_wrapper.msg.waited_for_node.node == node_id.node
-           && error_wrapper.msg.waited_for_node.component == node_id.component)
-          {
-            error_wrapper.msg.stamp = now;
-            return;
-          }
-        }
-        mrs_errorgraph::ErrorgraphError msg;
-        msg.type = mrs_errorgraph::ErrorgraphError::TYPE_WAITING_FOR_NODE;
-        msg.stamp = now;
-        msg.waited_for_node.node = node_id.node;
-        msg.waited_for_node.component = node_id.component;
-        errors_.push_back({std::nullopt, std::move(msg)});
-      }
+      /*!
+        * \brief Add a special error type `waiting_for_topic`.
+        * You should prioritize using the addWaitingForNodeError() method if you know the node that should publish
+        * this topic to provide better information to the Errorgraph. Use this method if the node publishing
+        * the topic is unknown or can change.
+        *
+        * \param topic_name       Full name of the topic that is being waited for.
+        */
+      void addWaitingForTopicError(const std::string& topic_name);
 
     private:
       ros::NodeHandle nh_;
@@ -132,23 +117,9 @@ namespace mrs_errorgraph
 
       ros::Timer tim_publish_;
 
-      void timPublish([[maybe_unused]] const ros::TimerEvent& evt)
-      {
-        publishErrors();
-      }
+      void timPublish([[maybe_unused]] const ros::TimerEvent& evt);
 
-      void publishErrors()
-      {
-        std::scoped_lock lck(errors_mtx_, pub_mtx_);
-        mrs_errorgraph::ErrorgraphElement msg;
-        msg.stamp = ros::Time::now();
-        msg.source_node.node = node_name_;
-        msg.source_node.component = component_name_;
-        for (const auto& error_wrapper : errors_)
-          msg.errors.emplace_back(error_wrapper.msg);
-        pub_.publish(msg);
-        errors_.clear();
-      }
+      void publishErrors();
   };
 
 }

@@ -57,6 +57,18 @@ target_link_libraries(MrsErrorgraph
   ${catkin_LIBRARIES}
   )
 
+## | -------------------- libMrsErrorPublisher -------------------- |
+
+## Declare a C++ library
+add_library(MrsErrorPublisher
+  src/error_publisher.cpp
+  )
+
+## Specify libraries to link a library or executable target against
+target_link_libraries(MrsErrorPublisher
+  ${catkin_LIBRARIES}
+  )
+
 ## | ------------------- RootErrorPublisher ------------------- |
 
 ## Declare a C++ executable
