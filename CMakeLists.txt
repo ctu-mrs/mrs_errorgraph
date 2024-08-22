@@ -32,6 +32,7 @@ generate_messages(DEPENDENCIES
 
 set(LIBRARIES
   MrsErrorgraph
+  MrsErrorPublisher
   )
 
 catkin_package(
