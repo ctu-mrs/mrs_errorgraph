@@ -26,43 +26,45 @@ namespace mrs_errorgraph
   {
     public:
 
+      /* error_t //{ */
+      
       struct error_t
       {
         ros::Time stamp;
         std::string type;
         std::optional<std::string> waited_for_topic;
         std::optional<node_id_t> waited_for_node;
-
+      
         inline bool is_waiting_for() const
         {
           return is_waiting_for_topic() || is_waiting_for_node();
         }
-
+      
         inline bool is_waiting_for_topic() const
         {
           return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_TOPIC;
         }
-
+      
         inline bool is_waiting_for_node() const
         {
           return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_NODE;
         }
-
+      
         inline bool is_waiting_for(const std::string& topic) const
         {
           return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_TOPIC && waited_for_topic.has_value() && waited_for_topic.value() == topic;
         }
-
+      
         inline bool is_waiting_for(const node_id_t& node_id) const
         {
           return type == errorgraph_error_msg_t::TYPE_WAITING_FOR_NODE && waited_for_node.has_value() && waited_for_node.value() == node_id;
         }
-
+      
         inline bool is_no_error() const
         {
           return type == errorgraph_error_msg_t::TYPE_NO_ERROR;
         }
-
+      
         error_t(const errorgraph_error_msg_t& msg)
           : type(msg.type)
         {
@@ -72,7 +74,7 @@ namespace mrs_errorgraph
             waited_for_topic = msg.waited_for_topic;
           stamp = msg.stamp;
         }
-
+      
         errorgraph_error_msg_t to_msg() const
         {
           errorgraph_error_msg_t ret;
@@ -85,7 +87,11 @@ namespace mrs_errorgraph
           return ret;
         }
       };
+      
+      //}
 
+      /* element_t //{ */
+      
       struct element_t
       {
         enum class type_t
@@ -93,33 +99,33 @@ namespace mrs_errorgraph
           node,
           topic
         };
-
+      
         size_t element_id;
         type_t type;
-
+      
         // name of the topic (if this element is a topic)
         std::string topic_name;
         // name of this node (if this element is a node) or of the node
         // expected to publish this topic (if known)
         node_id_t source_node;
-
+      
         // a list of errors related to this element (if it is a node)
         std::vector<error_t> errors;
         // last time this was updated from a message
         ros::Time stamp = ros::Time(0);
         ros::Duration not_reporting_delay = ros::Duration(3.0);
-
+      
         // graph-related variables used by the build_graph() and find_dependency_roots() methods
         std::vector<element_t*> parents;
         std::vector<element_t*> children;
         bool visited = false;
-
+      
         element_t(size_t element_id, const node_id_t& source_node)
           : element_id(element_id), type(type_t::node), source_node(source_node) {};
-
+      
         element_t(size_t element_id, const std::string& topic_name, const node_id_t& source_node = {})
           : element_id(element_id), type(type_t::topic), topic_name(topic_name), source_node(source_node) {};
-
+      
         inline std::vector<const std::string*> waited_for_topics() const
         {
           std::vector<const std::string*> ret;
@@ -131,7 +137,7 @@ namespace mrs_errorgraph
           }
           return ret;
         }
-
+      
         inline std::vector<const node_id_t*> waited_for_nodes() const
         {
           std::vector<const node_id_t*> ret;
@@ -143,7 +149,7 @@ namespace mrs_errorgraph
           }
           return ret;
         }
-
+      
         inline bool is_waiting_for() const
         {
           return std::any_of(std::begin(errors), std::end(errors), [](const auto& error)
@@ -151,7 +157,7 @@ namespace mrs_errorgraph
                 return error.is_waiting_for();
               });
         }
-
+      
         inline bool is_waiting_for(const node_id_t& node_id) const
         {
           return std::any_of(std::begin(errors), std::end(errors), [node_id](const auto& error)
@@ -159,7 +165,7 @@ namespace mrs_errorgraph
                 return error.is_waiting_for(node_id);
               });
         }
-
+      
         inline bool is_no_error() const
         {
           return !is_not_reporting() && std::all_of(std::begin(errors), std::end(errors), [](const auto& error)
@@ -167,12 +173,12 @@ namespace mrs_errorgraph
                 return error.is_no_error();
               });
         }
-
+      
         inline bool is_not_reporting() const
         {
           return type != type_t::topic && ros::Time::now() - stamp > not_reporting_delay;
         }
-
+      
         errorgraph_element_msg_t to_msg() const
         {
           errorgraph_element_msg_t ret;
@@ -183,6 +189,8 @@ namespace mrs_errorgraph
           return ret;
         }
       };
+      
+      //}
 
     private:
       std::vector<std::unique_ptr<element_t>> elements_;
@@ -223,6 +231,11 @@ namespace mrs_errorgraph
       const element_t* find_element(const node_id_t& node_id);
 
       const element_t* add_element_from_msg(const errorgraph_element_msg_t& msg);
+
+      const auto begin() {return elements_.begin();}
+      const auto end() {return elements_.end();}
+      const auto cbegin() {return elements_.cbegin();}
+      const auto cend() {return elements_.cend();}
   };
 
 }

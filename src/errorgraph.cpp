@@ -81,6 +81,7 @@ namespace mrs_errorgraph
 
   std::vector<const Errorgraph::element_t*> Errorgraph::find_error_roots()
   {
+    build_graph();
     std::vector<const element_t*> roots;
     for (const auto& el_ptr : elements_)
     {
@@ -92,6 +93,7 @@ namespace mrs_errorgraph
 
   std::vector<const Errorgraph::element_t*> Errorgraph::find_roots()
   {
+    build_graph();
     std::vector<const element_t*> roots;
     for (const auto& el_ptr : elements_)
     {
