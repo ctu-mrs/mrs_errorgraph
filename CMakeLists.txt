@@ -13,6 +13,11 @@ set(CATKIN_DEPENDENCIES
   message_generation
   )
 
+set(LIBRARIES
+  MrsErrorgraph
+  MrsErrorPublisher
+  )
+
 find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_DEPENDENCIES}
   )
@@ -30,10 +35,6 @@ generate_messages(DEPENDENCIES
   std_msgs
   )
 
-set(LIBRARIES
-  MrsErrorgraph
-  MrsErrorPublisher
-  )
 
 catkin_package(
   INCLUDE_DIRS include
@@ -53,6 +54,11 @@ add_library(MrsErrorgraph
   src/errorgraph.cpp
   )
 
+add_dependencies(MrsErrorgraph
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+  )
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(MrsErrorgraph
   ${catkin_LIBRARIES}
@@ -65,6 +71,11 @@ add_library(MrsErrorPublisher
   src/error_publisher.cpp
   )
 
+add_dependencies(MrsErrorPublisher
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+  )
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(MrsErrorPublisher
   ${catkin_LIBRARIES}
@@ -75,6 +86,11 @@ target_link_libraries(MrsErrorPublisher
 ## Declare a C++ executable
 add_executable(root_error_publisher
   src/root_error_publisher.cpp
+  )
+
+add_dependencies(root_error_publisher
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
   )
 
 ## Specify libraries to link a library or executable target against
